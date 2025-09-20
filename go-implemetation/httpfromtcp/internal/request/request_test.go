@@ -28,4 +28,14 @@ func TestRequestLineParse(t *testing.T){
 	// Test: Invalid number of parts in request line
 	_, err = RequestFromReader(strings.NewReader("/coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n"))
 	require.Error(t, err)
+
+	// Test: Good POST Request line
+	r, err = RequestFromReader(strings.NewReader("POST /check HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n"))
+	require.NoError(t, err);
+	assert.Equal(t, r.RequestLine.Method, "POST")
+
+	// Test: Bad Invalid version
+	r, err = RequestFromReader(strings.NewReader("GET /check HTTP/2.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n"))
+	require.Error(t, err);
+
 }	
