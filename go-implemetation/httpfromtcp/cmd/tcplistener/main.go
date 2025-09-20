@@ -1,15 +1,15 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
-	"io"
+	"httpfromtcp/httpfromtcp/internal/request"
 	"log"
 	"net"
 )
 
 func main(){
 	listener, err := net.Listen("tcp", ":42069")
+	fmt.Println("Server is running on port 42069")
 	if err!= nil{
 		log.Fatal("error", "error", err) 
 	}
@@ -17,39 +17,19 @@ func main(){
 	for{
 		conn, err := listener.Accept()
 		if err != nil{
+			log.Fatalf("error %v", err)
+		}
+		
+		req, err := request.RequestFromReader(conn);
+		if err != nil{
 			log.Fatal("error", "error", err)
 		}
-		for line := range getLinesChannel(conn){
-			fmt.Printf("read: %s/n", line);
-		}
+		fmt.Println("Request Line:")
+		fmt.Printf("- Method: %v\n", req.RequestLine.Method);
+		fmt.Printf("- Target: %v\n", req.RequestLine.RequestTarget);
+		fmt.Printf("- Version: %v\n", req.RequestLine.HttpVersion);
+
 		fmt.Println("Connection to ", conn.RemoteAddr(), "closed")
 	}
 	
-}
-func getLinesChannel(f io.ReadCloser) <-chan string{
-	out := make(chan string, 1);
-	go func(){
-		defer f.Close();
-		defer close(out);
-		str := "";
-		for{
-			data := make([]byte , 8);
-			n,err := f.Read(data);
-			if err != nil{
-				break;
-			}
-			data = data[:n];
-			if i:= bytes.IndexByte(data, '\n'); i!=-1{
-				str += string(data[:i]);
-				data = data[i+1:]
-				out <- str;
-				str = "";
-			}
-			str += string(data);
-		}
-		if len(str) != 0{
-			out <- str;
-		}
-	}()
-	return out;
 }
