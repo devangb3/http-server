@@ -3,16 +3,19 @@ package request
 import (
 	"bytes"
 	"fmt"
+	"httpfromtcp/httpfromtcp/internal/headers"
 	"io"
 )
 type ParserStatus string;
 const (
 	Initialized ParserStatus = "init"
 	Done ParserStatus = "done"
+	ParsingHeader ParserStatus ="parsing headers"
 	Error ParserStatus = "error"
 )
 type Request struct {
     RequestLine RequestLine
+	Headers *headers.Headers
 	ParserStatus ParserStatus
 }
 type RequestLine struct {
@@ -28,6 +31,7 @@ var SEPERATOR = []byte("\r\n");
 func newRequest() *Request{
 	return &Request{
 		ParserStatus: Initialized,
+		Headers: headers.NewHeaders(),
 	}
 }
 func RequestFromReader(reader io.Reader) (*Request, error){
@@ -40,7 +44,7 @@ func RequestFromReader(reader io.Reader) (*Request, error){
 			return nil, err;
 		}
 		bufLen += n;
-		readN, err := req.parse(buf[:bufLen+n])
+		readN, err := req.parse(buf[:bufLen])
 		if err != nil{
 			return nil, err;
 		}
@@ -82,11 +86,12 @@ func (r *Request) parse(data []byte) (int, error){
 	read := 0;
 outer:
 	for{
+		currentData := data[read:];
 		switch r.ParserStatus {
 		case Error:
 			return 0, ErrorInvalidParserStatus
 		case Initialized:
-			rl,n, err := parseRequestLine(data[read:])
+			rl,n, err := parseRequestLine(currentData)
 			if err != nil{
 				r.ParserStatus = Error;
 				return 0, err;
@@ -96,9 +101,25 @@ outer:
 			}
 			r.RequestLine = *rl;
 			read += n;
-			r.ParserStatus = Done;
+			//currentData = currentData[:read]
+			r.ParserStatus = ParsingHeader;
+		case ParsingHeader:
+			n, done, err := r.Headers.Parse(currentData);
+			if err != nil{
+				r.ParserStatus = Error;
+				return 0, err;
+			}
+			if n == 0{
+				break outer;
+			}
+			read += n;
+			if done{
+				r.ParserStatus = Done;
+			}
 		case Done:
 			break outer
+		default:
+			panic("Something went wrong!")
 		}
 	}
 	return read, nil;

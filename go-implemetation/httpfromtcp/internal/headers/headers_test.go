@@ -41,4 +41,12 @@ func TestHeaders(t *testing.T){
 	require.Error(t, err)
 	assert.Equal(t, 0, n)
 	assert.False(t, done)
+
+	//Test: Invalid Token Present
+	h = NewHeaders()
+	data = []byte("Host: localhost:42069\r\nHost: localhost:42068\r\n\r\n")
+	n, done, err = h.Parse(data)
+	require.NotNil(t, h.headers)
+	assert.Equal(t, "localhost:42069,localhost:42068", h.Get("Host"))
+	assert.True(t, done)
 }

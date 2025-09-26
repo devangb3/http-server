@@ -19,7 +19,12 @@ func (h Headers) Get(name string) string{
 	return h.headers[strings.ToLower(name)];
 }
 func (h Headers) Put(key string, value string){
-	h.headers[strings.ToLower(key)] = value;
+	key = strings.ToLower(key);
+	if v,ok := h.headers[key]; ok{
+		h.headers[key] = fmt.Sprintf("%s,%s", v, value)
+	}else{
+		h.headers[key] = value;
+	}
 }
 func isToken(str []byte) bool {
 	for _, ch := range str {
