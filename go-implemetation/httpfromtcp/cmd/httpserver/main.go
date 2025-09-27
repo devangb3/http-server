@@ -1,13 +1,17 @@
 package main
 
 import (
+	"crypto/sha256"
+	"fmt"
+	"httpfromtcp/httpfromtcp/internal/headers"
 	"httpfromtcp/httpfromtcp/internal/request"
 	"httpfromtcp/httpfromtcp/internal/response"
 	"httpfromtcp/httpfromtcp/internal/server"
 	"log"
+	"net/http"
 	"os"
-	"fmt"
 	"os/signal"
+	"strings"
 	"syscall"
 )
 const port = 42069
@@ -44,6 +48,13 @@ func respond200() []byte{
 		</body>
 		</html>`);
 }
+func toStr(bytes []byte) string{
+	out := "";
+	for _, b := range bytes{
+		out += fmt.Sprintf("%02x", b)
+	}
+	return out;
+}
 
 func main() {
 	s, err := server.Serve(port, func(w *response.Writer, req *request.Request){
@@ -58,6 +69,45 @@ func main() {
 		}else if req.RequestLine.RequestTarget == "/myproblem"{
 			body = respond500();
 			status = response.StatusInternalServerError;
+		}else if strings.HasPrefix(req.RequestLine.RequestTarget, "/httpbin/"){
+			target := req.RequestLine.RequestTarget;
+			res, err := http.Get("https://httpbin.org/" + target[len("/httpbin/"):])
+			if err != nil{
+				body = respond500();
+				status = response.StatusInternalServerError;
+			}else{
+				fullBody := []byte{};
+				for{
+					w.WriteStatusLine(status);
+
+					h.Delete("content-Length");
+					h.Put("transfer-encoding", "chunked");
+					h.Replace("content-type", "text/plain")
+					h.Put("Trailer", "X-Content-SHA256")
+					h.Put("Trailer", "X-Content-Length")
+					w.WriteHeaders(*h);
+
+					for{
+						data := make([]byte, 32);
+						n, err := res.Body.Read(data);
+						if err != nil{
+							break;
+						}
+						fullBody = append(fullBody, data[:n]...);
+						w.WriteBody([]byte(fmt.Sprintf("%x\r\n", n)));
+						w.WriteBody(data[:n]);
+						w.WriteBody([]byte("\r\n"));
+					}
+					w.WriteBody([]byte("0\r\n"));
+					trailers := headers.NewHeaders();
+					out := sha256.Sum256(fullBody);
+					trailers.Put("X-Content-SHA256", toStr(out[:]))
+					trailers.Put("X-Content-Length", fmt.Sprintf("%d", len(fullBody)))
+					w.WriteHeaders(*trailers);
+					
+					return;
+				}
+			}
 		}
 		h.Replace("Content-length", fmt.Sprintf("%d",len(body)))
 		h.Replace("Content-type", "text/html")
