@@ -32,6 +32,8 @@ func main(){
 		req.Headers.ForEach(func(n, v string){
 			fmt.Printf("- %v: %v\n", n, v)
 		})
+		fmt.Println("Body:\n")
+		fmt.Printf("%s\n", req.Body)
 		fmt.Println("Connection to ", conn.RemoteAddr(), "closed")
 	}
 	
