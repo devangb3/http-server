@@ -12,9 +12,12 @@ func TestHeaders(t *testing.T){
 	n, done, err := h.Parse(data)
 	require.NoError(t, err)
 	require.NotNil(t, h.headers)
-	assert.Equal(t, "localhost:42069", h.Get("Host"))
-	assert.Equal(t, "bar", h.Get("foo"))
-	assert.Equal(t, "", h.Get("MissingKey"))
+	host, _ := h.Get("Host")
+	assert.Equal(t, "localhost:42069", host)
+	foo, _ := h.Get("foo");
+	assert.Equal(t, "bar", foo)
+	missing_key, _ := h.Get("MissingKey");
+	assert.Equal(t, "", missing_key)
 	assert.Equal(t, 35, n)
 	assert.True(t, done)
 
@@ -32,7 +35,8 @@ func TestHeaders(t *testing.T){
 	_, _, err = h.Parse(data);
 	require.NoError(t, err);
 	require.NotNil(t, h.headers);
-	assert.Equal(t, "localhost:42069", h.Get("Host"))
+	host, _ = h.Get("Host");
+	assert.Equal(t, "localhost:42069", host)
 
 	//Test: Invalid Token Present
 	h = NewHeaders()
@@ -47,6 +51,7 @@ func TestHeaders(t *testing.T){
 	data = []byte("Host: localhost:42069\r\nHost: localhost:42068\r\n\r\n")
 	n, done, err = h.Parse(data)
 	require.NotNil(t, h.headers)
-	assert.Equal(t, "localhost:42069,localhost:42068", h.Get("Host"))
+	host, _ = h.Get("Host");
+	assert.Equal(t, "localhost:42069,localhost:42068", host)
 	assert.True(t, done)
 }

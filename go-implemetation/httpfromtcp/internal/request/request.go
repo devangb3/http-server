@@ -5,18 +5,21 @@ import (
 	"fmt"
 	"httpfromtcp/httpfromtcp/internal/headers"
 	"io"
+	"strconv"
 )
 type ParserStatus string;
 const (
 	Initialized ParserStatus = "init"
 	Done ParserStatus = "done"
 	ParsingHeader ParserStatus ="parsing headers"
+	ParsingBody ParserStatus = "parsing body"
 	Error ParserStatus = "error"
 )
 type Request struct {
     RequestLine RequestLine
 	Headers *headers.Headers
 	ParserStatus ParserStatus
+	Body string
 }
 type RequestLine struct {
 	HttpVersion   string
@@ -33,6 +36,17 @@ func newRequest() *Request{
 		ParserStatus: Initialized,
 		Headers: headers.NewHeaders(),
 	}
+}
+func getInt(headers *headers.Headers, name string, defaultValue int) int{
+	valueStr, exists := headers.Get(name);
+	if !exists{
+		return defaultValue;
+	}
+	value, err := strconv.Atoi(valueStr);
+	if err != nil{
+		return defaultValue;
+	}
+	return value;
 }
 func RequestFromReader(reader io.Reader) (*Request, error){
 	req := newRequest()
@@ -81,7 +95,10 @@ func parseRequestLine(s []byte) (*RequestLine, int, error){
 func (r *Request) isDone() bool{
 	return r.ParserStatus == Done || r.ParserStatus == Error;
 }
-
+func( r* Request) hasBody() bool{
+	length := getInt(r.Headers, "content-length", 0);
+	return length > 0;
+}
 func (r *Request) parse(data []byte) (int, error){
 	read := 0;
 outer:
@@ -113,8 +130,30 @@ outer:
 			}
 			read += n;
 			if done{
-				r.ParserStatus = Done;
+				if r.hasBody(){
+					r.ParserStatus = ParsingBody;
+				}else{
+					r.ParserStatus = Done;
+				}
 			}
+		case ParsingBody:
+			length := getInt(r.Headers, "Content-Length", 0);
+			if length == 0{
+				panic("Chunked not implemented")
+			}
+
+			remaining := min(length - len(r.Body), len(currentData))
+			r.Body += string(currentData[:remaining])
+			read += remaining;
+
+			if(len(r.Body) == length){
+				r.ParserStatus = Done
+			}
+			if len(r.Body) > length{
+				r.ParserStatus = Error;
+				return 0, fmt.Errorf("length of Body is more than Content-Length");
+			}
+			return read,nil;
 		case Done:
 			break outer
 		default:
