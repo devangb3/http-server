@@ -28,7 +28,10 @@ func main(){
 		fmt.Printf("- Method: %v\n", req.RequestLine.Method);
 		fmt.Printf("- Target: %v\n", req.RequestLine.RequestTarget);
 		fmt.Printf("- Version: %v\n", req.RequestLine.HttpVersion);
-
+		fmt.Println("Headers:\n")
+		req.Headers.ForEach(func(n, v string){
+			fmt.Printf("- %v: %v\n", n, v)
+		})
 		fmt.Println("Connection to ", conn.RemoteAddr(), "closed")
 	}
 	

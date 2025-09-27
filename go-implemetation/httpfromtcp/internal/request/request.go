@@ -101,7 +101,6 @@ outer:
 			}
 			r.RequestLine = *rl;
 			read += n;
-			//currentData = currentData[:read]
 			r.ParserStatus = ParsingHeader;
 		case ParsingHeader:
 			n, done, err := r.Headers.Parse(currentData);

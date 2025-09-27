@@ -26,6 +26,11 @@ func (h Headers) Put(key string, value string){
 		h.headers[key] = value;
 	}
 }
+func (h *Headers) ForEach(cb func(n, v string)){
+	 for n,v := range h.headers{
+		cb(n,v);
+	 }
+}
 func isToken(str []byte) bool {
 	for _, ch := range str {
 		if (ch >= 'a' && ch <= 'z') ||
